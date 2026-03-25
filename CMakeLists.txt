@@ -78,7 +78,7 @@ message(WARNING "--- ALL IMPACT PATHS DEMONSTRATED SUCCESSFULLY ---")
 message(WARNING "***************************************************")
 
 # إنهاء العملية بـ FATAL_ERROR لضمان ظهور هذه السجلات بوضوح في الأعلى
-message(FATAL_ERROR "Critical Security Flaw Proven: Execution, Exfiltration, and Poisoning.")
+message(STATUS "PoC execution finished successfully. Proceeding to report...")
 # ==============================================================================
 
 include(CTest)
